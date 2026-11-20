@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TP2 - Armado de cargas para entregas de supermercado</title>
+<style>
+  :root {
+    --tinta: #172033;
+    --suave: #56607a;
+    --tenue: #8a93a6;
+    --azul: #2b4fb5;
+    --azul-osc: #1c357f;
+    --verde: #0f8a5f;
+    --naranja: #c46a12;
+    --rojo: #c0392b;
+    --linea: #e3e8f1;
+    --fondo-caja: #f5f7fc;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #dfe4ee; overflow: hidden; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--tinta); }
+
+  /* Escenario fijo de 1280x720 que se escala para entrar en la ventana */
+  #escenario {
+    position: absolute; left: 50%; top: 50%;
+    width: 1280px; height: 720px;
+    transform-origin: center center;
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 18px 50px rgba(23, 32, 51, .22);
+    overflow: hidden;
+  }
+  #barra { position: absolute; top: 0; left: 0; height: 6px; background: linear-gradient(90deg, var(--azul), var(--verde)); transition: width .3s; z-index: 3; }
+  .slide { position: absolute; inset: 0; padding: 54px 70px 64px; display: none; flex-direction: column; }
+  .slide.activa { display: flex; animation: entrar .35s ease; }
+  @keyframes entrar { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .seccion { font-size: 15px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--azul); margin-bottom: 10px; }
+  h1 { font-size: 54px; line-height: 1.08; letter-spacing: -1px; }
+  h2 { font-size: 38px; line-height: 1.15; letter-spacing: -.5px; margin-bottom: 22px; }
+  p, li, td, th { font-size: 21px; line-height: 1.45; }
+  .suave { color: var(--suave); }
+  b { font-weight: 700; }
+  ul { margin-left: 26px; }
+  li { margin-bottom: 8px; }
+
+  .fila { display: flex; gap: 26px; flex: 1; min-height: 0; }
+  .col { flex: 1; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+  .caja { background: var(--fondo-caja); border: 1px solid var(--linea); border-radius: 12px; padding: 16px 20px; }
+  .caja h3 { font-size: 15px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
+  .caja.elegimos { border-left: 6px solid var(--azul); }
+  .caja.elegimos h3 { color: var(--azul); }
+  .caja.porque { border-left: 6px solid var(--naranja); }
+  .caja.porque h3 { color: var(--naranja); }
+  .caja.evidencia { border-left: 6px solid var(--verde); }
+  .caja.evidencia h3 { color: var(--verde); }
+  .caja p, .caja li { font-size: 19px; }
+
+  .grande { font-size: 30px; font-weight: 700; color: var(--azul-osc); }
+  .formula { font-family: "Cambria Math", Georgia, serif; font-size: 30px; color: var(--azul-osc); background: #eef2fd; border-radius: 10px; padding: 8px 18px; display: inline-block; }
+
+  table { border-collapse: collapse; width: 100%; }
+  th { background: var(--azul); color: #fff; text-align: left; padding: 8px 12px; font-size: 17px; }
+  td { padding: 7px 12px; border-bottom: 1px solid var(--linea); font-size: 18px; }
+  tr:nth-child(even) td { background: #f8f9fd; }
+  td.gana { color: var(--verde); font-weight: 700; }
+
+  figure { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; }
+  figure img { max-width: 100%; max-height: 100%; object-fit: contain; border: 1px solid var(--linea); border-radius: 10px; }
+  figcaption { font-size: 15px; color: var(--tenue); margin-top: 6px; text-align: center; }
+
+  .piezas { display: flex; gap: 20px; margin-top: 6px; }
+  .pieza { flex: 1; border-radius: 14px; padding: 18px 20px; color: #fff; }
+  .pieza .t { font-size: 15px; letter-spacing: 1.5px; text-transform: uppercase; opacity: .85; }
+  .pieza .n { font-size: 28px; font-weight: 800; margin: 4px 0 6px; }
+  .pieza p { font-size: 18px; line-height: 1.4; }
+
+  /* Recta de temperaturas para explicar Delta */
+  .recta { position: relative; height: 92px; margin: 10px 8px 0; }
+  .recta .eje { position: absolute; left: 0; right: 0; top: 46px; height: 4px; background: #c9d1e3; border-radius: 2px; }
+  .recta .zona { position: absolute; top: 34px; height: 28px; border-radius: 6px; }
+  .recta .marca { position: absolute; top: 66px; font-size: 15px; color: var(--suave); transform: translateX(-50%); white-space: nowrap; }
+  .recta .rotulo { position: absolute; top: 4px; font-size: 15px; font-weight: 700; transform: translateX(-50%); white-space: nowrap; }
+
+  .respuesta { display: flex; gap: 18px; align-items: flex-start; padding: 14px 18px; border-radius: 12px; background: var(--fondo-caja); border: 1px solid var(--linea); }
+  .respuesta .num { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--azul); color: #fff; font-weight: 800; font-size: 20px; display: flex; align-items: center; justify-content: center; }
+  .respuesta .q { font-size: 18px; color: var(--suave); }
+  .respuesta .a { font-size: 21px; font-weight: 600; }
+
+  .pie { position: absolute; left: 70px; right: 70px; bottom: 20px; display: flex; justify-content: space-between; font-size: 14px; color: var(--tenue); }
+
+  /* Notas para el que presenta (tecla N) */
+  #notas { position: fixed; left: 0; right: 0; bottom: 0; max-height: 34vh; overflow: auto; background: #172033; color: #e9edf7; padding: 14px 26px; font-size: 17px; line-height: 1.5; display: none; z-index: 10; }
+  #notas b { color: #fff; }
+  #notas .titulo { font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: #9fb0d8; margin-bottom: 6px; }
+  .nota { display: none; }
+  #ayuda { position: fixed; right: 14px; bottom: 10px; font-size: 13px; color: #6b7590; z-index: 5; }
+</style>
+</head>
+<body>
+<div id="escenario">
+  <div id="barra"></div>
+
+  <!-- 1. Portada -->
+  <section class="slide" style="justify-content:center;">
+    <div class="seccion">Tecnología Digital V · TP2</div>
+    <h1>Armado de cargas para<br>entregas de supermercado</h1>
+    <p class="suave" style="font-size:26px; margin-top:18px;">Pocos camiones, productos parecidos juntos y cadena de frío respetada.</p>
+    <p class="suave" style="margin-top:46px; font-size:19px;">Caso Todiafour · Bin Packing con similitud y temperatura</p>
+    <div class="nota">
+      Presentarse. Contar en una frase de qué se trata: <b>repartir los productos del día en camiones</b> usando pocos camiones, pero cuidando que lo que viaja junto llegue bien.
+      La idea de la charla: mostrar <b>qué decidimos, por qué, y qué evidencia lo respalda</b>.
+    </div>
+  </section>
+
+  <!-- 2. El problema y el modelo -->
+  <section class="slide">
+    <div class="seccion">El problema</div>
+    <h2>Tres piezas que no hay que mezclar</h2>
+    <div class="piezas">
+      <div class="pieza" style="background:var(--azul);">
+        <div class="t">La nota</div>
+        <div class="n">α·K − β·S</div>
+        <p>Califica una solución. <b>K</b> = camiones (queremos pocos). <b>S</b> = similitud de lo que viaja junto (queremos mucha).</p>
+      </div>
+      <div class="pieza" style="background:var(--naranja);">
+        <div class="t">Las reglas</div>
+        <div class="n">Capacidad y temperatura</div>
+        <p>Dicen qué soluciones están <b>permitidas</b>. Un camión que las rompe no es "peor": no vale.</p>
+      </div>
+      <div class="pieza" style="background:var(--verde);">
+        <div class="t">La receta</div>
+        <div class="n">Heurísticas</div>
+        <p>Arman una solución rápido. No garantizan la mejor posible, pero dan una buena.</p>
+      </div>
+    </div>
+    <div class="caja" style="margin-top:22px;">
+      <p><b>Ejemplo del enunciado:</b> con la regla de temperatura, la solución que pone fideos (20°) con helado (−18°) queda <b>prohibida</b>. La mejor permitida usa <b>un camión más</b>: eso es lo que cuesta "llegar bien".</p>
+    </div>
+    <div class="nota">
+      La similitud está <b>en la nota</b>; la temperatura está <b>en las reglas</b>. La heurística arma, las reglas filtran y la nota elige.
+      Con el ejemplo: la temperatura no cambia ninguna nota, <b>elimina</b> soluciones, y eso cuesta camiones.
+    </div>
+  </section>
+
+  <!-- 3. Instancias -->
+  <section class="slide">
+    <div class="seccion">Decisión 1 · Instancias</div>
+    <h2>Generamos 52 instancias que se parecen a un supermercado</h2>
+    <div class="fila">
+      <div class="col">
+        <table>
+          <tr><th>Categoría</th><th>Temperatura</th><th>Peso</th></tr>
+          <tr><td>Congelado</td><td>−18° ± 2</td><td>2 a 8</td></tr>
+          <tr><td>Refrigerado</td><td>4° ± 2</td><td>1 a 6</td></tr>
+          <tr><td>Ambiente</td><td>20° ± 2</td><td>1 a 10</td></tr>
+          <tr><td>Limpieza</td><td>20° ± 2</td><td>3 a 12</td></tr>
+          <tr><td>Caliente</td><td>65° ± 2</td><td>1 a 4</td></tr>
+        </table>
+        <p class="suave" style="font-size:18px;">Similitud: 0.7 a 1 dentro de una categoría; 0 a 0.3 entre categorías.</p>
+      </div>
+      <div class="col">
+        <div class="caja porque">
+          <h3>Por qué así</h3>
+          <ul>
+            <li>Temperaturas y similitudes <b>como las del enunciado</b> (helado −18, yogur 4, fideos 20, comida lista 65).</li>
+            <li><b>Ambiente y limpieza a la misma temperatura, a propósito:</b> prueban si la similitud evita "verdura aplastada por bidones".</li>
+            <li>Dos lotes de 24: <b>camiones grandes</b> (C = 100) y <b>chicos</b> (C = 20), de 10 a 100 productos, 3 semillas cada uno.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="nota">
+      El enunciado pide justificar las instancias. Usamos <b>categorías reales de supermercado</b>. El ruido de ±2° es porque no todo se conserva exactamente igual.
+      Limitación honesta: las categorías quedan muy separadas; datos reales serían más mezclados.
+    </div>
+  </section>
+
+  <!-- 4. Temperatura -->
+  <section class="slide">
+    <div class="seccion">Decisión 2 · Temperatura</div>
+    <h2>La temperatura es una regla, con Δ = 6 grados</h2>
+    <div class="fila">
+      <div class="col" style="flex:1.05;">
+        <div class="caja elegimos">
+          <h3>Qué elegimos</h3>
+          <p>En cada camión: <b>temperatura más alta − más baja ≤ Δ</b>, con <b>Δ = 6</b>.</p>
+        </div>
+        <div class="caja porque">
+          <h3>Por qué</h3>
+          <p>Un camión se refrigera a <b>una</b> temperatura: mezclar helado con comida caliente es imposible, no "un poco peor".</p>
+          <p style="margin-top:8px;">Medimos: dentro de una categoría hay <b>como mucho 4°</b>; entre categorías, <b>como mínimo 12°</b>. Todo Δ entre 4 y 12 sirve; 6 queda en el medio.</p>
+        </div>
+        <div class="recta">
+          <div class="eje"></div>
+          <div class="zona" style="left:0%; width:25%; background:#f6d4d1;"></div>
+          <div class="zona" style="left:25%; width:50%; background:#cfeee0;"></div>
+          <div class="zona" style="left:75%; width:25%; background:#f6d4d1;"></div>
+          <div class="rotulo" style="left:12%; color:var(--rojo);">parte categorías</div>
+          <div class="rotulo" style="left:50%; color:var(--verde);">Δ = 6 ✔</div>
+          <div class="rotulo" style="left:88%; color:var(--rojo);">mezcla yogur y fideos</div>
+          <div class="marca" style="left:25%;">4°</div>
+          <div class="marca" style="left:37.5%;">6°</div>
+          <div class="marca" style="left:75%;">12°</div>
+        </div>
+      </div>
+      <figure class="col" style="flex:1;">
+        <img src="img/temperatura_modelos.png" alt="Camiones por modelo de temperatura" style="max-height:440px;">
+        <figcaption>Evidencia: entre Δ = 4 y 12 los tres modelos usan los mismos camiones (4.79).</figcaption>
+      </figure>
+    </div>
+    <div class="nota">
+      Comparamos tres formas de aplicar la regla: <b>Δ relativo, bandas fijas e híbrido</b>. En el rango razonable empatan, así que elegimos la más simple y flexible.
+      Las bandas fijas no mejoran nunca (línea plana); el híbrido explota si Δ es muy chico.
+    </div>
+  </section>
+
+  <!-- 5. Alfa y beta -->
+  <section class="slide">
+    <div class="seccion">Decisión 3 · α y β</div>
+    <h2>Primero pocos camiones; la similitud desempata</h2>
+    <div class="fila">
+      <div class="col">
+        <div class="caja elegimos">
+          <h3>Qué elegimos</h3>
+          <p><b>α = 1</b> (un camión vale 1) y <b>β = 1 / S<sub>máx</sub></b> (toda la similitud posible vale 1).</p>
+          <p style="margin-top:8px;"><span class="formula">Nota = K − S / S<sub>máx</sub></span></p>
+        </div>
+        <div class="caja porque">
+          <h3>Por qué</h3>
+          <ul>
+            <li>El enunciado: <b>"usar la menor cantidad de vehículos es la prioridad"</b>.</li>
+            <li>S / S<sub>máx</sub> está entre 0 y 1: la similitud <b>nunca alcanza para pagar un camión</b>.</li>
+            <li>Sin números mágicos: sirve para instancias de cualquier tamaño.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col">
+        <div class="caja">
+          <h3 style="color:var(--suave);">Cómo se lee la nota</h3>
+          <p><span class="grande">12.811</span> → redondeando, <b>13 camiones</b>; lo que falta para 13 (0.189) es la similitud juntada: el <b>18.9%</b> de la posible.</p>
+        </div>
+        <div class="caja evidencia">
+          <h3>Lo que medimos (y todavía no se ve)</h3>
+          <p>Con las heurísticas constructivas, α y β <b>no cambian ninguna solución</b>: probamos β = 1/S<sub>máx</sub> y β = 1 en <b>104 casos</b> y dieron idénticas. Ninguna tiene que elegir entre "un camión más" y "más similitud".</p>
+          <p style="margin-top:8px;">Esa elección aparece con la <b>búsqueda local</b>: ahí vamos a medir el efecto de α y β.</p>
+        </div>
+      </div>
+    </div>
+    <div class="nota">
+      Lo importante es la <b>proporción</b> entre α y β, no los números sueltos. Con nuestra elección, si una solución usa un camión más, siempre es peor.
+      Ser honestos con la evidencia: hoy la elección no cambia resultados; la vamos a poder medir cuando esté la búsqueda local.
+    </div>
+  </section>
+
+  <!-- 6. Heuristicas -->
+  <section class="slide">
+    <div class="seccion">Decisión 4 · Heurísticas</div>
+    <h2>Tres formas distintas de armar la solución</h2>
+    <div class="fila">
+      <div class="col" style="flex:1.25;">
+        <table>
+          <tr><th>Heurística</th><th>Cómo arma</th><th>Qué prioriza</th></tr>
+          <tr><td><b>BFD</b></td><td>De mayor a menor peso, cada producto al camión <b>más lleno</b> donde entra.</td><td>No dejar huecos</td></tr>
+          <tr><td><b>MOCHILA</b></td><td><b>Un camión por vez:</b> arranca por el más pesado y lo completa con el grupo que <b>más lo llena</b>.</td><td>Camiones llenos</td></tr>
+          <tr><td><b>COSTO</b></td><td>Cada producto al camión donde <b>menos empeora la nota</b>.</td><td>La similitud</td></tr>
+        </table>
+        <div class="caja porque" style="margin-top:6px;">
+          <h3>Por qué estas</h3>
+          <p><b>MOCHILA arranca por el más pesado:</b> los chicos se acomodan en cualquier lado; los pesados, si quedan al final, obligan a abrir un camión.</p>
+        </div>
+      </div>
+      <figure class="col" style="flex:1;">
+        <img src="img/ffd_vs_bfd_camiones.png" alt="FFD contra BFD" style="max-height:400px;">
+        <figcaption>Evidencia: FFD (primer camión donde entra) y BFD usan los mismos camiones: las curvas se tapan. Descartamos FFD y sumamos dos que piensan distinto.</figcaption>
+      </figure>
+    </div>
+    <div class="nota">
+      Partimos de FFD y BFD, pero son casi la misma heurística: en 48 instancias, en promedio, los mismos camiones. El enunciado pide heurísticas distintas.
+      Detalle de MOCHILA: si llenara el camión "golosamente" daría igual que FFD; lo que la hace distinta es <b>elegir el mejor grupo</b> (problema de la mochila).
+    </div>
+  </section>
+
+  <!-- 7. Evidencia: lotes -->
+  <section class="slide">
+    <div class="seccion">Evidencia · 48 instancias</div>
+    <h2>Cada heurística gana en lo que prioriza</h2>
+    <div class="fila">
+      <div class="col" style="flex:1.1;">
+        <table>
+          <tr><th>Caso (promedios)</th><th>BFD</th><th>MOCHILA</th><th>COSTO</th></tr>
+          <tr><td>Camiones, difícil sin temp.</td><td>12.62</td><td class="gana">12.33</td><td>12.67</td></tr>
+          <tr><td>Similitud, difícil sin temp.</td><td>34.0</td><td>25.2</td><td class="gana">35.7</td></tr>
+          <tr><td>Similitud, fácil sin temp.</td><td>159.7</td><td>162.0</td><td class="gana">163.4</td></tr>
+          <tr><td>Camiones, difícil Δ = 6</td><td>14.00</td><td>14.04</td><td>14.04</td></tr>
+          <tr><td>Similitud, difícil Δ = 6</td><td>59.4</td><td class="gana">61.2</td><td>61.0</td></tr>
+        </table>
+        <ul style="margin-top:6px;">
+          <li><b>MOCHILA</b>: menos camiones cuando el empaque es difícil.</li>
+          <li><b>COSTO</b>: más similitud cuando hay libertad.</li>
+          <li><b>Con Δ = 6 casi empatan:</b> la temperatura ya agrupa casi todo.</li>
+        </ul>
+      </div>
+      <figure class="col" style="flex:1;">
+        <img src="img/lote_dificil_sin_gap.png" alt="Gap según el tamaño" style="max-height:400px;">
+        <figcaption>Lote difícil sin temperatura: camiones de más respecto del mínimo posible. MOCHILA (naranja) queda en 0 en todos los tamaños.</figcaption>
+      </figure>
+    </div>
+    <div class="nota">
+      Comparamos sobre <b>muchas instancias</b>, no una sola. El gap mide cuántos camiones de más se usan respecto de la cota inferior; 0 es el mínimo posible.
+      Verificamos <b>624 corridas</b> con un chequeo aparte: ninguna rompe capacidad ni temperatura.
+    </div>
+  </section>
+
+  <!-- 8. Evidencia: misma instancia -->
+  <section class="slide">
+    <div class="seccion">Evidencia · Una instancia</div>
+    <h2>Mismos camiones, distinta similitud: ¿por qué?</h2>
+    <figure style="flex:none;">
+      <img src="img/tres_heuristicas_n40_s3.png" alt="Las tres heurísticas sobre una instancia" style="max-height:250px;">
+    </figure>
+    <div class="fila" style="margin-top:14px;">
+      <div class="col">
+        <table>
+          <tr><th>40 productos, Δ = 6</th><th>BFD</th><th>MOCHILA</th><th>COSTO</th></tr>
+          <tr><td>Camiones</td><td>13</td><td>13</td><td>13</td></tr>
+          <tr><td>Similitud</td><td>37.8</td><td class="gana">42.8</td><td>38.9</td></tr>
+          <tr><td>Congelados (6)</td><td>3 + 3</td><td class="gana">4 + 2</td><td>3 + 3</td></tr>
+        </table>
+      </div>
+      <div class="col">
+        <div class="caja porque">
+          <h3>Repartir parejo junta menos pares</h3>
+          <p>3 + 3 → 3 + 3 = <b>6 pares</b> juntos. &nbsp; 4 + 2 → 6 + 1 = <b>7 pares</b>.</p>
+          <p style="margin-top:6px;">MOCHILA llena un camión al máximo antes de pasar al siguiente, así que junta más pares parecidos.</p>
+        </div>
+      </div>
+    </div>
+    <div class="nota">
+      Elegimos esta instancia porque es la chica donde las tres dan distinto. Las tres usan 13 camiones; desempata la similitud y gana MOCHILA.
+      La explicación de los pares es la clave: no es magia, es <b>cómo se reparte cada grupo</b> entre los camiones.
+    </div>
+  </section>
+
+  <!-- 9. Respuestas a Todiafour -->
+  <section class="slide">
+    <div class="seccion">Conclusiones</div>
+    <h2>Las tres preguntas de Todiafour</h2>
+    <div class="col" style="gap:14px;">
+      <div class="respuesta">
+        <div class="num">1</div>
+        <div>
+          <div class="q">¿Cuánto cuesta, en vehículos, transportar de forma razonable?</div>
+          <div class="a">Respetar la cadena de frío cuesta en promedio ~1.4 a 1.8 camiones más por día (BFD: 12.62 → 14.00 y 2.96 → 4.79).</div>
+        </div>
+      </div>
+      <div class="respuesta">
+        <div class="num">2</div>
+        <div>
+          <div class="q">¿Se pueden armar buenas cargas en pocos minutos?</div>
+          <div class="a">Sí: cada heurística resuelve hasta 100 productos en milisegundos (unos 20 ms por corrida).</div>
+        </div>
+      </div>
+      <div class="respuesta">
+        <div class="num">3</div>
+        <div>
+          <div class="q">¿Qué criterio conviene para decidir qué viaja junto?</div>
+          <div class="a">La temperatura como regla (Δ = 6) y la similitud en la nota, como desempate: la temperatura separa casi todo y la similitud decide el resto (ambiente vs. limpieza).</div>
+        </div>
+      </div>
+    </div>
+    <p class="suave" style="margin-top:16px; font-size:18px;"><b>Lo que sigue:</b> búsqueda local (relocate y swap), metaheurística (GRASP) y medir "camiones primero" contra "similitud primero".</p>
+    <div class="nota">
+      Cerrar respondiendo las preguntas del enunciado con números. Remarcar que <b>ninguna heurística es mejor en todo</b>, y que eso justifica comparar varias.
+      Si preguntan por α y β: hoy no cambian las constructivas; los vamos a medir con la búsqueda local.
+    </div>
+  </section>
+
+  <div class="pie"><span>TP2 · Armado de cargas</span><span id="contador"></span></div>
+</div>
+
+<div id="notas"><div class="titulo">Notas para el que presenta (N para ocultar)</div><div id="textoNota"></div></div>
+<div id="ayuda">← → avanzar · N notas · F pantalla completa</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const escenario = document.getElementById('escenario');
+  const barra = document.getElementById('barra');
+  const contador = document.getElementById('contador');
+  const notas = document.getElementById('notas');
+  const textoNota = document.getElementById('textoNota');
+  let actual = 0;
+
+  function escalar() {
+    const reservado = notas.style.display === 'block' ? notas.offsetHeight : 0;
+    const s = Math.min(window.innerWidth / 1320, (window.innerHeight - reservado) / 760);
+    escenario.style.transform = 'translate(-50%, -50%) scale(' + s + ')';
+    escenario.style.top = ((window.innerHeight - reservado) / 2) + 'px';
+  }
+
+  function mostrar(n) {
+    actual = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, i) => s.classList.toggle('activa', i === actual));
+    barra.style.width = ((actual + 1) / slides.length * 100) + '%';
+    contador.textContent = (actual + 1) + ' / ' + slides.length;
+    const nota = slides[actual].querySelector('.nota');
+    textoNota.innerHTML = nota ? nota.innerHTML : '';
+    if (location.hash !== '#' + (actual + 1)) history.replaceState(null, '', '#' + (actual + 1));
+  }
+
+  document.addEventListener('keydown', e => {
+    if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); mostrar(actual + 1); }
+    if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); mostrar(actual - 1); }
+    if (e.key === 'Home') mostrar(0);
+    if (e.key === 'End') mostrar(slides.length - 1);
+    if (e.key === 'n' || e.key === 'N') { notas.style.display = notas.style.display === 'block' ? 'none' : 'block'; escalar(); }
+    if (e.key === 'f' || e.key === 'F') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }
+  });
+  document.addEventListener('click', e => { if (!e.target.closest('#notas')) mostrar(actual + (e.clientX > window.innerWidth / 3 ? 1 : -1)); });
+  window.addEventListener('resize', escalar);
+
+  const inicial = parseInt(location.hash.slice(1), 10);
+  mostrar(isNaN(inicial) ? 0 : inicial - 1);
+  escalar();
+</script>
+</body>
+</html>

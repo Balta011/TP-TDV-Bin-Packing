@@ -1,0 +1,19 @@
+# Build
+/build/
+*.o
+*.obj
+*.exe
+
+# Resultados generados
+/resultados/*
+!/resultados/.gitkeep
+
+# Varios
+__pycache__/
+.DS_Store
+
+# Configuracion local de herramientas
+.claude/
+
+# Enunciado de la catedra (cada uno ya lo tiene)
+/tp2.pdf
